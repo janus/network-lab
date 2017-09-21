@@ -1,14 +1,15 @@
 #!bash
-echo "starting process"
-if [ "$1" == "-f" ]; then
-  echo "starting if"
-  input=$(<"$2")
+
+#Cloned from https://github.com/sudomesh/network-lab
+#Example on how to run it , source ./network-lab.sh  example-network.json
+
+if [ -f $1 ]; then
+  input=$(<"$1")
 else
   stdin=$(cat)
-  echo "starting else"
   input=$stdin
 fi
-echo "starting process"
+
 
 # clear namespaces
 ip -all netns delete
@@ -21,10 +22,7 @@ do
   alias "n${node:1:-1}"="ip netns exec netlab-${node:1:-1}"  
   ip netns add "netlab-${node:1:-1}"
 done
-#ip netns add netlab-1
-#ip netns add netlab-2
-#ip netns add netlab-3
-# iterate over edges array
+
 
 length=$(jq '.edges | length' <<< "$input")
 for ((i=0; i<$length; i++)); do
@@ -45,18 +43,15 @@ for ((i=0; i<$length; i++)); do
   # add ip addresses on each side
   ipA=$(jq '.nodes["'$A'"].ip' <<< "$input")
   ipB=$(jq '.nodes["'$B'"].ip' <<< "$input")
-  #ip netns exec "netlab-$A" ip addr add ${ipA:1:-1} dev "veth-$A-$B" 
-  #ip netns exec "netlab-$B" ip addr add ${ipB:1:-1} dev "veth-$B-$A" 
+ 
+  # bring the interfaces up
   ip netns exec "netlab-$A" ifconfig "veth-$A-$B"  ${ipA:1:-1}/24 up
   ip netns exec "netlab-$B" ifconfig "veth-$B-$A"  ${ipB:1:-1}/24 up
 
   echo ${ipA:1:-1}
   echo ${ipB:1:-1}
 
-  # bring the interfaces up
-  #ip netns exec "netlab-$A" ip link set dev "veth-$A-$B" up
-  #ip netns exec "netlab-$B" ip link set dev "veth-$B-$A" up
-  #ip netns exec "netlab-$A" ip route 
+ 
 
   # add some connection quality issues
   AtoB=$(jq '.edges['$i']["->"]' <<< "$input")
